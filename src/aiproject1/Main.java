@@ -1,115 +1,110 @@
-package aiproject1;
 /*
- * Bachir - 9334394
- * Wadih - 9459510
+ * @authors:    Bachir Alhabbal     9334394
+ *              Wadih El-Ghoussoubi 9459510
+ *
+ * This is the Main class containing the main() method that performs the
+ * required heuristic searches for the assignment.
  */
 
-
-
+package comp472asgn1;
 
 import java.util.Scanner;
 import java.util.Queue;
 import java.util.LinkedList;
 import java.io.*;
 
-
 public class Main {
-    private static char goal[][]= new char[3][3];
+
+    private static char goal[][] = new char[3][3];
 
     public static void main(String[] args) throws FileNotFoundException, IOException {
-        // take in the data from the file "in.txt".
-        char state[][]= new char[3][3];
-        File file= new File("in.txt");
-        Scanner scan= new Scanner(file);
-        String temp= scan.next();
-        for (int k=0; k<6; k++){
-            if (k<3){
-                state[k]= temp.toCharArray();
+        // Read the data from the file "in.txt".
+        char state[][] = new char[3][3];
+        File file = new File("in.txt");
+        Scanner scan = new Scanner(file);
+        String temp = scan.next();
+        for (int i=0; i<6; i++){
+            if (i<3){
+                state[i] = temp.toCharArray();
             }
-            if (k>=3){
-                goal[k-3]= temp.toCharArray();
+            if (i>=3){
+                goal[i-3] = temp.toCharArray();
             }
             if (!scan.hasNext()) break;
-            temp= scan.next();
+            temp = scan.next();
         }
-        System.out.println("startint state is: ");
+        System.out.println("Starting state is: ");
         print(state);
-        System.out.println("goal state is: ");
+        System.out.println("Goal state is: ");
         print(goal);
 
-        System.out.println("Starting with heuristic1...");
-        Node[] answer= search1(state);
-        int num1= 0;
-        int num2= 0;
-        if (answer.length==0) System.out.println("answer was empty!!!");
-        for (int k=0; k<answer.length; k++){
-            print(answer[k].getState());
-            num1++;
-        }
-        writeToFile(answer, "out.txt");
-        System.out.println("Now moving to heuristic2...");
-        answer= search2(state);
-        if (answer.length==0) System.out.println("answer was empty!!!");
-        for (int k=0; k<answer.length; k++){
-            print(answer[k].getState());
-            num2++;
-        }
-        writeToFile(answer, "out2.txt");
-        System.out.println("Answers have been writen to their files (out1.txt and out2.txt).\n");
-        System.out.println("There were "+num1+" steps for h1 and "+"there were "+num2+" steps for h2.");
+        String[] heuristics = {"Misplaced Tiles", "Manhattan Distance", "n-Swap INADMISSIBLE", "Custom: h2-h3"};
+        int[] steps = {0, 0, 0, 0};
+        Node[] solution;
 
+        for (int i=0; i !=heuristics.length; i++) {
+            System.out.println("Performing Heuristic # "+(i+1)+" ("+heuristics[i]+")...");
+            solution = search(state, i+1);
+            if (solution.length==0) System.out.println("    Solution is empty!");
+            steps[i] = solution.length;
+            writeToFile(solution, "out"+(i+1)+".txt");
+            System.out.println("    Completed in "+steps[i]+" steps.");
+            System.out.println("    Solution Sequence written to file: \"out"+(i+1)+".txt\".");
+        }
     }
 
     /*
-     * returns an array with the child nodes of the node given.
+     * Returns an array with the child nodes of the given node.
      */
-    public static Node[] expand(Node n, int currentCost, Node[] prev){
-        Node[] nodes= new Node[4];
-        Board temp= new Board(n.getState());
-        nodes[0]= new Node(temp.getStateMoveUp(), currentCost+1);
-        nodes[1]= new Node(temp.getStateMoveDown(), currentCost+1);
-        nodes[2]= new Node(temp.getStateMoveRight(), currentCost+1);
-        nodes[3]= new Node(temp.getStateMoveLeft(), currentCost+1);
-        int numNull=0;
-        for (int k=0; k<4; k++){
-            if (nodes[k].getState()==null || beenToState(nodes[k].getState(), prev)) numNull++;
+    public static Node[] expand(Node n, int currentCost, Node[] prev) {
+        Node[] nodes = new Node[4];
+        Board temp = new Board(n.getState());
+        nodes[0] = new Node(temp.getStateMoveUp(), currentCost+1);
+        nodes[1] = new Node(temp.getStateMoveDown(), currentCost+1);
+        nodes[2] = new Node(temp.getStateMoveRight(), currentCost+1);
+        nodes[3] = new Node(temp.getStateMoveLeft(), currentCost+1);
+        int numNull = 0;
+        for (int i=0; i<4; i++){
+            if (nodes[i].getState()==null || beenToState(nodes[i].getState(), prev)) numNull++;
         }
-        int index=0;
-        Node[] correct= new Node[4-numNull];
-        for (int k=0; k<4; k++){
-            if (nodes[k].getState()==null || beenToState(nodes[k].getState(), prev)) continue;
-            correct[index]=nodes[k];
+        int index = 0;
+        Node[] correct = new Node[4-numNull];
+        for (int i=0; i<4; i++){
+            if (nodes[i].getState()==null || beenToState(nodes[i].getState(), prev)) continue;
+            correct[index] = nodes[i];
             index++;
         }
         return correct;
     }
 
     /*
-     * Given a state and the goal state h1 returns the number of missplaced
+     * Used for the Misplaced Tiles Heuristic.
+     * Given a state and the goal state h1 returns the number of misplaced
      * numbers the state has from the goal state.
      */
-    public static int h1(char[][] state){
-        int number= 0;
-        for (int k=0; k<3; k++){
-            for (int c=0; c<3; c++){
-                if (state[k][c]!= goal[k][c]) number++;
+    public static int h1(char[][] state) {
+        int number = 0;
+        for (int i=0; i<3; i++){
+            for (int j=0; j<3; j++){
+                if (state[i][j]!= goal[i][j]) number++;
             }
         }
         return number;
     }
 
     /*
-     * H2 calculates a value based on the number of spaces away the current
-     * number is from its goal then adds them all together to create a value
-     * for the whole state.
+     * Used for the Manhattan Distance Heuristic.
+     * h2 calculates a value based on the number of spaces away the current
+     * number is from its goal position then adds them all together to create
+     * a value for the whole state.
      */
-    public static int h2(char[][] state){
-        int total= 0;
-        Board board1= new Board(state);
-        Board board2= new Board(goal);
-        for (int k=0; k<9; k++){
-            int temp1[]= board1.findOnBoard(k);
-            int temp2[]= board2.findOnBoard(k);
+    public static int h2(char[][] state) {
+        int total = 0;
+        Board board1 = new Board(state);
+        Board board2 = new Board(goal);
+        for (int i=0; i<9; i++){
+            int temp1[]= board1.findOnBoard(i);
+            int temp2[]= board2.findOnBoard(i);
             int x1= temp1[0];
             int x2= temp2[0];
             int y1= temp1[1];
@@ -127,69 +122,113 @@ public class Main {
     }
 
     /*
-     * Given an array of nodes findLess goes through them and picks the one with
-     * the lowest cost + h1.
+     * Used for the n-Swap Heuristic (INADMISSIBLE).
+     * Given a state and the goal state h3 returns the number of steps required
+     * to reach the goal assuming we can swap any two tiles.
      */
-    public static Node findLess1(Node[] nodes){
+    public static int h3(char[][] state) {
+        int number = 0;
+        char[][] tempS = new char[3][3];
+        for (int i=0; i<3; i++){
+            for (int j=0; j<3; j++){
+                tempS[i][j]= state[i][j];
+            }
+        }
+        Board temp = new Board(tempS);
+        Board target = new Board(goal);
+        while (!equalArrays(temp.getBoardState(), target.getBoardState())) {
+            for (int i=0; i<3; i++){
+                for (int j=0; j<3; j++){
+                    char here = temp.getBoardState()[i][j];
+                    char there = target.getBoardState()[i][j];
+                    if (here != there){
+                        tempS[i][j] = there;
+                        int[] loc = temp.findCharOnBoard(there);
+                        tempS[loc[0]][loc[1]] = here;
+                        temp.setCurrentState(tempS);
+                        number++;
+                    }
+                }
+            }
+        }
+        return number;
+    }
+
+    /*
+     * Used for a Custom Heuristic.
+     * Given a state and the goal state h4 returns a combination of the second
+     * and third heuristics, by computing the difference.
+     */
+    public static int h4(char[][] state) {
+        return Math.abs(h2(state) - h3(state));
+    }
+
+    /*
+     * Heuristic Selector.
+     * Calls the heuristic function according to the passed integer.
+     */
+    public static int h(char[][] state, int heuristic) {
+        switch (heuristic) {
+            case 1 :
+                return h1(state);
+            case 2 :
+                return h2(state);
+            case 3 :
+                return h3(state);
+            case 4 :
+                return h4(state);
+            default:
+                return h1(state);
+        }
+    }
+
+    /*
+     * Given an array of nodes findLeast goes through them and picks the one with
+     * the lowest cost + the heuristic specified.
+     */
+    public static Node findLeast(Node[] nodes, int heuristic) {
         if (nodes.length==0) return null;
-        char temp[][]= nodes[0].getState();
-        int tempCost= nodes[0].getCost();
-        for (int k= 1; k<nodes.length; k++){
-            if (nodes[k].getState()==null) System.out.println("findLess found a null!!!"); // delete
-            if ((nodes[k].getCost()+h1(nodes[k].getState()))<(tempCost+h1(temp))){
-                temp= nodes[k].getState();
-                tempCost= nodes[k].getCost();
+        char temp[][] = nodes[0].getState();
+        int tempCost = nodes[0].getCost();
+        for (int i=1; i<nodes.length; i++){
+            if (nodes[i].getState()==null) System.out.println("findLess found a null!"); // delete
+            if ((nodes[i].getCost()+h(nodes[i].getState(), heuristic))<(tempCost+h(temp, heuristic))){
+                temp= nodes[i].getState();
+                tempCost= nodes[i].getCost();
             }
         }
         return new Node(temp, tempCost);
     }
 
     /*
-     * Given an array of nodes findLess goes through them and picks the one with
-     * the lowest cost + h2.
+     * A* Search using the provided Heuristic indentifier.
+     * This method implements an A* search algorithm to find the path to the goal
+     * given the initial state. This method uses the findLeast() method which uses
+     * the h() method to calculate a cost value for the state.
      */
-    public static Node findLess2(Node[] nodes){
-        if (nodes.length==0) return null;
-        char temp[][]= nodes[0].getState();
-        int tempCost= nodes[0].getCost();
-        for (int k= 1; k<nodes.length; k++){
-            if (nodes[k].getState()==null) System.out.println("findLess found a null!!!"); // delete
-            if ((nodes[k].getCost()+h2(nodes[k].getState()))<(tempCost+h2(temp))){
-                temp= nodes[k].getState();
-                tempCost= nodes[k].getCost();
-            }
-        }
-        return new Node(temp, tempCost);
-    }
-
-    /*
-     * This method implements an A* search algorithm to find the path to the
-     * given the initial state. This method uses the findLess1 method which uses
-     * the h1 method to calculate a value for the state.
-     */
-    public static Node[] search1(char[][] i){
-        int currentCost=0;
-        Node start= new Node(i, currentCost);
-        Queue <Node>answer= new <Node>LinkedList();
-        Queue <Node>fringe= new <Node>LinkedList();
+    public static Node[] search(char[][] i, int heuristic) {
+        int currentCost = 0;
+        Node start = new Node(i, currentCost);
+        Queue<Node> answer = new LinkedList<Node>();
+        Queue<Node> fringe = new LinkedList<Node>();
         fringe.add(start);
         while(!fringe.isEmpty()){
-            Node T= (Node)fringe.remove();
+            Node T = (Node)fringe.remove();
             //print(T.getState());
             if (equalArrays(T.getState(), goal)){
-                Node[] nodes= new Node[answer.size()];
+                Node[] nodes = new Node[answer.size()];
                 answer.toArray(nodes);
                 return nodes;
             }
-            Node[] nodes= new Node[answer.size()];
+            Node[] nodes = new Node[answer.size()];
             answer.toArray(nodes);
-            Node[] expand= expand(T, currentCost, nodes);
-            Node N= new Node();
-            int count= 1;
-            if (expand.length>0) N= findLess2(expand);
+            Node[] expand = expand(T, currentCost, nodes);
+            Node N = new Node();
+            int count = 1;
+            if (expand.length>0) N = findLeast(expand, heuristic);
             while (expand.length==0){
-                expand= expand(nodes[nodes.length-count], currentCost, nodes);
-                N= findLess1(expand);
+                expand = expand(nodes[nodes.length-count], currentCost, nodes);
+                N = findLeast(expand, heuristic);
                 count++;
             }
             fringe.add(N);
@@ -199,50 +238,17 @@ public class Main {
     }
 
     /*
-     * This method implements an A* search algorithm to find the path to the
-     * given the initial state. This method uses the findLess1 method which uses
-     * the h2 method to calculate a value for the state.
+     * Prints the 2D array that is passed to it.
+     * Only works on a 3x3 array.
      */
-    public static Node[] search2(char[][] i){
-        int currentCost=0;
-        Node start= new Node(i, currentCost);
-        Queue <Node>answer= new <Node>LinkedList();
-        Queue <Node>fringe= new <Node>LinkedList();
-        fringe.add(start);
-        while(!fringe.isEmpty()){
-            Node T= (Node)fringe.remove();
-            //print(T.getState());
-            if (equalArrays(T.getState(), goal)){
-                Node[] nodes= new Node[answer.size()];
-                answer.toArray(nodes);
-                return nodes;
-            }
-            Node[] nodes= new Node[answer.size()];
-            answer.toArray(nodes);
-            Node[] expand= expand(T, currentCost, nodes);
-            Node N= new Node();
-            int count= 1;
-            if (expand.length>0) N= findLess2(expand);
-            while (expand.length==0){
-                expand= expand(nodes[nodes.length-count], currentCost, nodes);
-                N= findLess2(expand);
-                count++;
-            }
-            fringe.add(N);
-            answer.add(N);
-        }
-        return new Node[0];
-    }
-
-    // prints the 2D array that is passed to it. (only a 3x3 array)
-    public static void print(char[][] c){
-        if (c==null){
-            System.out.println("print has been given a null array!");
+    public static void print(char[][] c) {
+        if (c==null) {
+            System.out.println("Print has been given a null array!");
             return;
         }
-        for (int k=0; k<3; k++){
-            for (int i=0; i<3; i++){
-                System.out.print(c[k][i]);
+        for (int i=0; i<3; i++){
+            for (int j=0; j<3; j++){
+                System.out.print(c[i][j]);
             }
             System.out.print("\n");
         }
@@ -250,32 +256,39 @@ public class Main {
     }
 
     /*
-     * The writeToFile method writes the given array of nodes to out.txt which is
-     * placed in the same directory as this program.
+     * The writeToFile method writes the given array of nodes to a specified
+     * output file name.
      */
-    public static void writeToFile(Node[] nodes, String name) throws FileNotFoundException, IOException{
-        File outFile= new File(name);
-        FileOutputStream outFileStream= new FileOutputStream(outFile);
-        DataOutputStream out= new DataOutputStream(outFileStream);
+    public static void writeToFile(Node[] nodes, String name) throws FileNotFoundException, IOException {
+        //File outFile = new File(name);
+        //FileOutputStream outFileStream = new FileOutputStream(outFile);
+        //DataOutputStream out = new DataOutputStream(outFileStream);
+        FileWriter outFileStream = new FileWriter(name);
+        BufferedWriter out = new BufferedWriter(outFileStream);
         for (int n=0; n<nodes.length; n++){
-            for (int k=0; k<3; k++){
-                for (int c=0; c<3; c++){
-                    out.writeChar(nodes[n].getState()[k][c]);
+            for (int i=0; i<3; i++){
+                for (int j=0; j<3; j++){
+                    //out.writeChar(nodes[n].getState()[i][j]);
+                    out.write(nodes[n].getState()[i][j]);
                 }
-                out.writeChars("\n");
+                //out.writeChars("\n");
+                out.write("\n");
             }
-            out.writeChars("\n");
+            //out.writeChars("\n");
+            out.write("\n");
         }
+        out.close();
     }
 
     /*
      * This method returns true if the two characters arrays it is given have
-     * the same values in the same places. (only for a 3X3 char array)
+     * the same values in the same places.
+     * Only works on 3x3 char arrays.
      */
-    public static boolean equalArrays(char[][] one, char[][] two){
-        for (int k=0; k<3; k++){
-            for (int c=0; c<3; c++){
-                if (one[k][c]!= two[k][c]){
+    public static boolean equalArrays(char[][] one, char[][] two) {
+        for (int i=0; i<3; i++){
+            for (int j=0; j<3; j++){
+                if (one[i][j]!= two[i][j]){
                     return false;
                 }
             }
@@ -284,15 +297,13 @@ public class Main {
     }
 
     /*
-     * This method is used to find out if the given state is in any of the nodes
-     * that are in the node array it is given. It returns true if the value
-     * is found in the node array.
+     * This method searches an array of nodes if it contains a given state.
+     * It returns true if the state is found in the node array.
      */
-    public static boolean beenToState(char[][] state, Node[] nodes){
-        for (int k=0; k<nodes.length; k++){
-            if (equalArrays(state, nodes[k].getState())) return true;
+    public static boolean beenToState(char[][] state, Node[] nodes) {
+        for (int i=0; i<nodes.length; i++){
+            if (equalArrays(state, nodes[i].getState())) return true;
         }
         return false;
     }
-
 }
